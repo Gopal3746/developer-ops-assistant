@@ -3,11 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "description": "A developer operations tool for monitoring repository health, issues, and CI activity.",
+  "scripts": {
+    "dev:api": "npm run dev -w @developer-ops/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
   }
 }
