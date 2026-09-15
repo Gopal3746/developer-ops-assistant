@@ -1,0 +1,13 @@
+{
+  "name": "developer-ops-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A developer operations tool for monitoring repository health, issues, and CI activity.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
