@@ -1,14 +1,18 @@
+import type {
+  HealthResponse,
+} from "@developer-ops/shared";
+import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 
-interface HealthResponse {
-  status: "ok";
-  service: "developer-ops-api";
-  timestamp: string;
-}
+import { registerOverviewRoute } from "./routes/overview.js";
 
-export function buildApp(): FastifyInstance {
+export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
+  });
+
+  await app.register(cors, {
+    origin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
   });
 
   app.get("/health", async (): Promise<HealthResponse> => {
@@ -18,6 +22,8 @@ export function buildApp(): FastifyInstance {
       timestamp: new Date().toISOString(),
     };
   });
+
+  await app.register(registerOverviewRoute);
 
   return app;
 }

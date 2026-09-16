@@ -405,3 +405,31 @@ td small {
     display: none;
   }
 }
+.data-label--connected {
+  border-color: rgb(72 211 158 / 35%);
+  color: #72e4b3;
+  background: rgb(62 200 146 / 10%);
+}
+
+.data-label--error {
+  border-color: rgb(255 115 124 / 35%);
+  color: #ff8e94;
+  background: rgb(255 99 110 / 10%);
+}
+
+.dashboard-state {
+  padding: 28px;
+}
+
+.dashboard-state h2 {
+  margin-bottom: 9px;
+}
+
+.dashboard-state p {
+  margin-bottom: 0;
+  color: #8398ad;
+}
+
+.dashboard-state--error {
+  border-color: rgb(255 115 124 / 40%);
+}
