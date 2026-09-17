@@ -1,18 +1,33 @@
-import type {
-  HealthResponse,
-} from "@developer-ops/shared";
+import type { HealthResponse } from "@developer-ops/shared";
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { createSampleOverview } from "./data.js";
 import { registerOverviewRoute } from "./routes/overview.js";
+import type { OverviewStore } from "./stores/overview-store.js";
 
-export async function buildApp(): Promise<FastifyInstance> {
+export interface BuildAppOptions {
+  overviewStore?: OverviewStore;
+}
+
+export async function buildApp(
+  options: BuildAppOptions = {},
+): Promise<FastifyInstance> {
   const app = Fastify({
     logger: false,
   });
 
+  const overviewStore: OverviewStore =
+    options.overviewStore ?? {
+      async getOverview() {
+        return createSampleOverview();
+      },
+    };
+
   await app.register(cors, {
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
+    origin:
+      process.env.WEB_ORIGIN ??
+      "http://localhost:5173",
   });
 
   app.get("/health", async (): Promise<HealthResponse> => {
@@ -23,7 +38,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     };
   });
 
-  await app.register(registerOverviewRoute);
+  await registerOverviewRoute(app, overviewStore);
 
   return app;
 }
