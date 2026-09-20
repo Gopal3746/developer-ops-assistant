@@ -1,7 +1,10 @@
 import type { DashboardOverview } from "@developer-ops/shared";
 import { useEffect, useState } from "react";
 
-import { fetchOverview } from "./api";
+import {
+  fetchOverview,
+  synchronizeGitHub,
+} from "./api";
 
 function formatRelativeTime(timestamp: string): string {
   const elapsedMilliseconds = Date.now() - new Date(timestamp).getTime();
@@ -31,9 +34,44 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`status-badge status-badge--${status}`}>{status}</span>;
 }
 
+interface SyncNotice {
+  type: "success" | "error";
+  message: string;
+}
+
 function App() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [isSynchronizing, setIsSynchronizing] =
+    useState(false);
+  const [syncNotice, setSyncNotice] =
+    useState<SyncNotice | null>(null);
+
+  async function handleSynchronization(): Promise<void> {
+    setIsSynchronizing(true);
+    setSyncNotice(null);
+
+    try {
+      const summary = await synchronizeGitHub();
+      const refreshedOverview = await fetchOverview();
+
+      setOverview(refreshedOverview);
+      setErrorMessage(null);
+      setSyncNotice({
+        type: "success",
+        message: `Synced ${summary.repositoryCount} repositories and ${summary.workflowRunCount} workflow runs.`,
+      });
+    } catch {
+      setSyncNotice({
+        type: "error",
+        message:
+          "GitHub synchronization failed. Check the API logs and credentials.",
+      });
+    } finally {
+      setIsSynchronizing(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -102,18 +140,49 @@ function App() {
             </p>
           </div>
 
-          <span
-            className={[
-              "data-label",
-              overview ? "data-label--connected" : "",
-              errorMessage ? "data-label--error" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {connectionLabel}
-          </span>
+          <div className="page-actions">
+            <span
+              className={[
+                "data-label",
+                overview
+                  ? "data-label--connected"
+                  : "",
+                errorMessage
+                  ? "data-label--error"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {connectionLabel}
+            </span>
+
+            <button
+              className="sync-button"
+              type="button"
+              disabled={isSynchronizing || !overview}
+              onClick={() => {
+                void handleSynchronization();
+              }}
+            >
+              {isSynchronizing
+                ? "Synchronizing…"
+                : "Sync now"}
+            </button>
+          </div>
         </header>
+        {syncNotice ? (
+          <div
+            className={`sync-notice sync-notice--${syncNotice.type}`}
+            role={
+              syncNotice.type === "error"
+                ? "alert"
+                : "status"
+            }
+          >
+            {syncNotice.message}
+          </div>
+        ) : null}
 
         {!overview ? (
           <section

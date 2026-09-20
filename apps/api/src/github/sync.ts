@@ -1,4 +1,7 @@
-import type { RepositoryStatus } from "@developer-ops/shared";
+import type {
+  GitHubSyncSummary,
+  RepositoryStatus,
+} from "@developer-ops/shared";
 
 import type {
   GitHubClient,
@@ -25,12 +28,6 @@ export interface GitHubSyncOptions {
   store: GitHubSyncStore;
   owner: string;
   repositoryLimit: number;
-}
-
-export interface GitHubSyncSummary {
-  repositoryCount: number;
-  openIssueCount: number;
-  workflowRunCount: number;
 }
 
 function determineRepositoryStatus(

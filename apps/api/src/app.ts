@@ -3,11 +3,16 @@ import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { createSampleOverview } from "./data.js";
+import {
+  registerGitHubSyncRoute,
+  type GitHubSynchronizer,
+} from "./routes/github-sync.js";
 import { registerOverviewRoute } from "./routes/overview.js";
 import type { OverviewStore } from "./stores/overview-store.js";
 
 export interface BuildAppOptions {
   overviewStore?: OverviewStore;
+  githubSynchronizer?: GitHubSynchronizer;
 }
 
 export async function buildApp(
@@ -39,6 +44,10 @@ export async function buildApp(
   });
 
   await registerOverviewRoute(app, overviewStore);
+  await registerGitHubSyncRoute(
+    app,
+    options.githubSynchronizer,
+  );
 
   return app;
 }

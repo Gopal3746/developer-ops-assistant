@@ -32,3 +32,9 @@ export interface HealthResponse {
   service: "developer-ops-api";
   timestamp: string;
 }
+
+export interface GitHubSyncSummary {
+  repositoryCount: number;
+  openIssueCount: number;
+  workflowRunCount: number;
+}

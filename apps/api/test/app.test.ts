@@ -12,6 +12,49 @@ afterEach(async () => {
 });
 
 describe("developer operations API", () => {
+  it("reports when GitHub synchronization is unavailable", async () => {
+    const app = await buildApp();
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/github/sync",
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({
+      message:
+        "GitHub synchronization is not configured",
+    });
+  });
+
+  it("runs configured GitHub synchronization", async () => {
+    const app = await buildApp({
+      githubSynchronizer: {
+        async synchronize() {
+          return {
+            repositoryCount: 10,
+            openIssueCount: 2,
+            workflowRunCount: 14,
+          };
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/github/sync",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      repositoryCount: 10,
+      openIssueCount: 2,
+      workflowRunCount: 14,
+    });
+  });
   it("reports that the API is available", async () => {
     const app = await buildApp();
     applications.push(app);
