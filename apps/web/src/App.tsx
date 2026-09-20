@@ -63,7 +63,7 @@ function App() {
   const connectionLabel = errorMessage
     ? "API unavailable"
     : overview
-      ? "API connected · sample data"
+      ? "API connected · PostgreSQL"
       : "Connecting to API";
 
   return (
@@ -88,7 +88,7 @@ function App() {
 
         <div className="connection-status">
           <span className="connection-dot" />
-          GitHub connection pending
+          GitHub sync configured
         </div>
       </aside>
 

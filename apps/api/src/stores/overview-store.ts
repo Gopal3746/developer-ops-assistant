@@ -33,6 +33,7 @@ export function createPostgresOverviewStore(
             openIssues: repositories.openIssues,
             status: repositories.status,
             updatedAt: repositories.githubUpdatedAt,
+            syncedAt: repositories.updatedAt,
           })
           .from(repositories)
           .orderBy(desc(repositories.githubUpdatedAt)),
@@ -82,12 +83,9 @@ export function createPostgresOverviewStore(
           startedAt: run.startedAt.toISOString(),
         }));
 
-      const synchronizationTimes = [
-        ...repositoryRows.map(
-          (repository) => repository.updatedAt,
-        ),
-        ...workflowRows.map((run) => run.startedAt),
-      ];
+      const synchronizationTimes = repositoryRows.map(
+        (repository) => repository.syncedAt,
+      );
 
       const lastSyncedAt = synchronizationTimes.reduce(
         (latest, timestamp) =>

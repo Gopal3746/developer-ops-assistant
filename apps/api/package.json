@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "github:sync": "tsx src/github/sync-command.ts"
   },
   "dependencies": {
     "@developer-ops/shared": "^0.1.0",
