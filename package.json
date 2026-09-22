@@ -9,7 +9,8 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:web": "npm run dev -w @developer-ops/web",
-    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\""
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "lint": "npm run lint --workspaces --if-present"
   },
   "workspaces": [
     "packages/*",
