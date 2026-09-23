@@ -8,6 +8,13 @@
       "when": 1789601085685,
       "tag": "0000_yummy_captain_america",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790184541105,
+      "tag": "0001_fantastic_jack_power",
+      "breakpoints": true
     }
   ]
 }
