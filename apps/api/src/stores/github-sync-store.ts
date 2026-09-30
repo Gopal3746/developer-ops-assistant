@@ -7,6 +7,7 @@ import {
 
 import type { Database } from "../db/client.js";
 import {
+  issues as githubIssues,
   repositories,
   workflowRuns,
 } from "../db/schema.js";
@@ -127,6 +128,15 @@ export function createPostgresGitHubSyncStore(
           }
 
           await transaction
+            .delete(githubIssues)
+            .where(
+              eq(
+                githubIssues.repositoryId,
+                repositoryId,
+              ),
+            );
+
+          await transaction
             .delete(workflowRuns)
             .where(
               eq(
@@ -134,6 +144,27 @@ export function createPostgresGitHubSyncStore(
                 repositoryId,
               ),
             );
+
+          if (snapshot.issues.length > 0) {
+            await transaction
+              .insert(githubIssues)
+              .values(
+                snapshot.issues.map((issue) => ({
+                  githubId: issue.githubId,
+                  repositoryId,
+                  number: issue.number,
+                  title: issue.title,
+                  body: issue.body,
+                  author: issue.author,
+                  state: issue.state,
+                  labels: issue.labels,
+                  htmlUrl: issue.htmlUrl,
+                  githubCreatedAt: issue.createdAt,
+                  githubUpdatedAt: issue.updatedAt,
+                  updatedAt: synchronizedAt,
+                })),
+              );
+          }
 
           if (snapshot.workflowRuns.length > 0) {
             await transaction

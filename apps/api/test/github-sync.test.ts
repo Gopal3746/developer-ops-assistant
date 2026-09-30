@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type {
   GitHubClient,
+  GitHubIssue,
   GitHubRepository,
   GitHubWorkflowRun,
 } from "../src/github/client.js";
@@ -38,6 +39,27 @@ const repositories: GitHubRepository[] = [
   },
 ];
 
+function issue(
+  githubId: string,
+  repository: string,
+  number: number,
+): GitHubIssue {
+  return {
+    githubId,
+    repositoryFullName: `Gopal3746/${repository}`,
+    number,
+    title: "API failure",
+    body: "The API returned an unexpected response.",
+    author: "Gopal3746",
+    state: "open",
+    labels: ["bug"],
+    htmlUrl:
+      `https://github.com/Gopal3746/${repository}/issues/${number}`,
+    createdAt: new Date("2026-09-19T10:00:00Z"),
+    updatedAt: new Date("2026-09-19T11:00:00Z"),
+  };
+}
+
 function workflowRun(
   githubId: string,
   repository: string,
@@ -55,10 +77,22 @@ function workflowRun(
 
 describe("GitHub synchronization", () => {
   it("classifies repositories and saves one snapshot", async () => {
-    const openIssueCounts = new Map([
-      ["failing-project", 0],
-      ["attention-project", 5],
-      ["healthy-project", 0],
+    const repositoryIssues = new Map<
+      string,
+      GitHubIssue[]
+    >([
+      ["failing-project", []],
+      [
+        "attention-project",
+        [
+          issue(
+            "301",
+            "attention-project",
+            1,
+          ),
+        ],
+      ],
+      ["healthy-project", []],
     ]);
 
     const workflowRuns = new Map<
@@ -103,8 +137,8 @@ describe("GitHub synchronization", () => {
         return repositories;
       },
 
-      async countOpenIssues(_owner, repository) {
-        return openIssueCounts.get(repository) ?? 0;
+      async listOpenIssues(_owner, repository) {
+        return repositoryIssues.get(repository) ?? [];
       },
 
       async listWorkflowRuns(_owner, repository) {
@@ -138,9 +172,19 @@ describe("GitHub synchronization", () => {
       ),
     ).toEqual(["failing", "attention", "healthy"]);
 
+    expect(
+      savedRepositories.map(
+        (repository) => repository.openIssues,
+      ),
+    ).toEqual([0, 1, 0]);
+
+    expect(savedRepositories[1]?.issues).toEqual([
+      issue("301", "attention-project", 1),
+    ]);
+
     expect(summary).toEqual({
       repositoryCount: 3,
-      openIssueCount: 5,
+      openIssueCount: 1,
       workflowRunCount: 3,
     });
   });
@@ -151,8 +195,8 @@ describe("GitHub synchronization", () => {
         return [];
       },
 
-      async countOpenIssues() {
-        return 0;
+      async listOpenIssues() {
+        return [];
       },
 
       async listWorkflowRuns() {

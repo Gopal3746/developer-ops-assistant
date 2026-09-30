@@ -99,18 +99,46 @@ describe("GitHub client", () => {
     ]);
   });
 
-  it("counts issues without counting pull requests", async () => {
+  it("lists issues without including pull requests", async () => {
     const requestFetch: typeof fetch = async () =>
       jsonResponse([
         {
           id: 201,
           number: 1,
           title: "API failure",
+          body: "The overview endpoint returns an error.",
+          state: "open",
+          html_url:
+            "https://github.com/Gopal3746/developer-ops-assistant/issues/1",
+          user: {
+            login: "Gopal3746",
+          },
+          labels: [
+            "bug",
+            {
+              name: "api",
+            },
+            {
+              name: null,
+            },
+          ],
+          created_at: "2026-09-17T09:00:00Z",
+          updated_at: "2026-09-17T10:00:00Z",
         },
         {
           id: 202,
           number: 2,
           title: "Dependency update",
+          body: null,
+          state: "open",
+          html_url:
+            "https://github.com/Gopal3746/developer-ops-assistant/pull/2",
+          user: {
+            login: "dependabot",
+          },
+          labels: [],
+          created_at: "2026-09-17T08:00:00Z",
+          updated_at: "2026-09-17T08:30:00Z",
           pull_request: {
             url: "https://api.github.com/pulls/2",
           },
@@ -122,12 +150,32 @@ describe("GitHub client", () => {
       requestFetch,
     });
 
-    const count = await client.countOpenIssues(
+    const issues = await client.listOpenIssues(
       "Gopal3746",
       "developer-ops-assistant",
     );
 
-    expect(count).toBe(1);
+    expect(issues).toEqual([
+      {
+        githubId: "201",
+        repositoryFullName:
+          "Gopal3746/developer-ops-assistant",
+        number: 1,
+        title: "API failure",
+        body: "The overview endpoint returns an error.",
+        author: "Gopal3746",
+        state: "open",
+        labels: ["bug", "api"],
+        htmlUrl:
+          "https://github.com/Gopal3746/developer-ops-assistant/issues/1",
+        createdAt: new Date(
+          "2026-09-17T09:00:00Z",
+        ),
+        updatedAt: new Date(
+          "2026-09-17T10:00:00Z",
+        ),
+      },
+    ]);
   });
 
   it("maps GitHub workflow states to dashboard states", async () => {

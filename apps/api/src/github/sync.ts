@@ -5,12 +5,14 @@ import type {
 
 import type {
   GitHubClient,
+  GitHubIssue,
   GitHubRepository,
   GitHubWorkflowRun,
 } from "./client.js";
 
 export interface SynchronizedRepository {
   repository: GitHubRepository;
+  issues: GitHubIssue[];
   openIssues: number;
   status: RepositoryStatus;
   workflowRuns: GitHubWorkflowRun[];
@@ -81,8 +83,8 @@ export async function synchronizeGitHubData(
     [];
 
   for (const repository of repositories) {
-    const [openIssues, workflowRuns] = await Promise.all([
-      client.countOpenIssues(
+    const [issues, workflowRuns] = await Promise.all([
+      client.listOpenIssues(
         repository.owner,
         repository.name,
       ),
@@ -92,8 +94,11 @@ export async function synchronizeGitHubData(
       ),
     ]);
 
+    const openIssues = issues.length;
+
     synchronizedRepositories.push({
       repository,
+      issues,
       openIssues,
       status: determineRepositoryStatus(
         openIssues,

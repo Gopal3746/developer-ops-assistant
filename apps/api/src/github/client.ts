@@ -9,6 +9,20 @@ export interface GitHubRepository {
   updatedAt: Date;
 }
 
+export interface GitHubIssue {
+  githubId: string;
+  repositoryFullName: string;
+  number: number;
+  title: string;
+  body: string | null;
+  author: string | null;
+  state: "open" | "closed";
+  labels: string[];
+  htmlUrl: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface GitHubWorkflowRun {
   githubId: string;
   repositoryFullName: string;
@@ -23,10 +37,10 @@ export interface GitHubClient {
     owner: string,
   ): Promise<GitHubRepository[]>;
 
-  countOpenIssues(
+  listOpenIssues(
     owner: string,
     repository: string,
-  ): Promise<number>;
+  ): Promise<GitHubIssue[]>;
 
   listWorkflowRuns(
     owner: string,
@@ -48,6 +62,23 @@ function mapWorkflowStatus(
   }
 
   return conclusion === "success" ? "passed" : "failed";
+}
+
+function mapIssueLabels(
+  labels: readonly (
+    | string
+    | {
+        name?: string | null;
+      }
+  )[],
+): string[] {
+  return labels.flatMap((label) => {
+    if (typeof label === "string") {
+      return [label];
+    }
+
+    return label.name ? [label.name] : [];
+  });
 }
 
 export function createGitHubClient(
@@ -99,10 +130,10 @@ export function createGitHubClient(
         }));
     },
 
-    async countOpenIssues(
+    async listOpenIssues(
       owner: string,
       repository: string,
-    ): Promise<number> {
+    ): Promise<GitHubIssue[]> {
       const issueData = await octokit.paginate(
         octokit.rest.issues.listForRepo,
         {
@@ -113,9 +144,26 @@ export function createGitHubClient(
         },
       );
 
-      return issueData.filter(
-        (issue) => issue.pull_request === undefined,
-      ).length;
+      return issueData
+        .filter(
+          (issue) => issue.pull_request === undefined,
+        )
+        .map((issue) => ({
+          githubId: String(issue.id),
+          repositoryFullName: `${owner}/${repository}`,
+          number: issue.number,
+          title: issue.title,
+          body: issue.body ?? null,
+          author: issue.user?.login ?? null,
+          state:
+            issue.state === "closed"
+              ? "closed"
+              : "open",
+          labels: mapIssueLabels(issue.labels),
+          htmlUrl: issue.html_url,
+          createdAt: new Date(issue.created_at),
+          updatedAt: new Date(issue.updated_at),
+        }));
     },
 
     async listWorkflowRuns(
