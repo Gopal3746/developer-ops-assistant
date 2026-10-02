@@ -38,3 +38,25 @@ export interface GitHubSyncSummary {
   openIssueCount: number;
   workflowRunCount: number;
 }
+
+export type IssueState = "open" | "closed";
+
+export interface IssueRecord {
+  id: number;
+  repository: string;
+  repositoryFullName: string;
+  number: number;
+  title: string;
+  body: string | null;
+  author: string | null;
+  state: IssueState;
+  labels: string[];
+  htmlUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueListResponse {
+  total: number;
+  issues: IssueRecord[];
+}

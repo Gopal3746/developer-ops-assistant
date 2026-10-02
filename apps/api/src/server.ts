@@ -5,6 +5,7 @@ import { createDatabase } from "./db/client.js";
 import { createGitHubClient } from "./github/client.js";
 import { synchronizeGitHubData } from "./github/sync.js";
 import { createPostgresGitHubSyncStore } from "./stores/github-sync-store.js";
+import { createPostgresIssueStore } from "./stores/issue-store.js";
 import { createPostgresOverviewStore } from "./stores/overview-store.js";
 
 const host = process.env.API_HOST ?? "0.0.0.0";
@@ -60,6 +61,7 @@ const githubSynchronizer =
 
 const app = await buildApp({
   overviewStore: createPostgresOverviewStore(db),
+  issueStore: createPostgresIssueStore(db),
   ...(githubSynchronizer
     ? {
         githubSynchronizer,

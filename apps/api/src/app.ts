@@ -7,11 +7,14 @@ import {
   registerGitHubSyncRoute,
   type GitHubSynchronizer,
 } from "./routes/github-sync.js";
+import { registerIssuesRoute } from "./routes/issues.js";
 import { registerOverviewRoute } from "./routes/overview.js";
+import type { IssueStore } from "./stores/issue-store.js";
 import type { OverviewStore } from "./stores/overview-store.js";
 
 export interface BuildAppOptions {
   overviewStore?: OverviewStore;
+  issueStore?: IssueStore;
   githubSynchronizer?: GitHubSynchronizer;
 }
 
@@ -26,6 +29,16 @@ export async function buildApp(
     options.overviewStore ?? {
       async getOverview() {
         return createSampleOverview();
+      },
+    };
+
+  const issueStore: IssueStore =
+    options.issueStore ?? {
+      async listIssues() {
+        return {
+          total: 0,
+          issues: [],
+        };
       },
     };
 
@@ -44,6 +57,7 @@ export async function buildApp(
   });
 
   await registerOverviewRoute(app, overviewStore);
+  await registerIssuesRoute(app, issueStore);
   await registerGitHubSyncRoute(
     app,
     options.githubSynchronizer,
