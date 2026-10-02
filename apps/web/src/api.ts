@@ -1,6 +1,7 @@
 import type {
   DashboardOverview,
   GitHubSyncSummary,
+  IssueListResponse,
 } from "@developer-ops/shared";
 
 const apiBaseUrl =
@@ -21,6 +22,32 @@ export async function fetchOverview(
   }
 
   return (await response.json()) as DashboardOverview;
+}
+
+export async function fetchIssues(
+  repository?: string,
+  signal?: AbortSignal,
+): Promise<IssueListResponse> {
+  const parameters = new URLSearchParams({
+    limit: "50",
+  });
+
+  if (repository) {
+    parameters.set("repository", repository);
+  }
+
+  const response = await fetch(
+    `${apiBaseUrl}/api/issues?${parameters.toString()}`,
+    signal ? { signal } : undefined,
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Issue request failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as IssueListResponse;
 }
 
 export async function synchronizeGitHub(): Promise<GitHubSyncSummary> {
