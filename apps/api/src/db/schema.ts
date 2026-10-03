@@ -27,6 +27,26 @@ export const issueState = pgEnum("issue_state", [
   "closed",
 ]);
 
+export const issueClassificationStatus = pgEnum(
+  "issue_classification_status",
+  ["pending", "classified", "failed"],
+);
+
+export const issueCategory = pgEnum("issue_category", [
+  "bug",
+  "feature",
+  "question",
+  "documentation",
+  "other",
+]);
+
+export const issuePriority = pgEnum("issue_priority", [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+]);
+
 export const repositories = pgTable("repositories", {
   id: serial("id").primaryKey(),
   githubId: text("github_id").notNull().unique(),
@@ -115,6 +135,20 @@ export const issues = pgTable(
       withTimezone: true,
       mode: "date",
     }).notNull(),
+    classificationStatus: issueClassificationStatus(
+      "classification_status",
+    )
+      .notNull()
+      .default("pending"),
+    category: issueCategory("category"),
+    priority: issuePriority("priority"),
+    aiSummary: text("ai_summary"),
+    classificationModel: text("classification_model"),
+    classificationError: text("classification_error"),
+    classifiedAt: timestamp("classified_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
     createdAt: timestamp("created_at", {
       withTimezone: true,
       mode: "date",
@@ -137,5 +171,8 @@ export const issues = pgTable(
       table.repositoryId,
     ),
     index("issues_state_index").on(table.state),
+    index("issues_classification_status_index").on(
+      table.classificationStatus,
+    ),
   ],
 );

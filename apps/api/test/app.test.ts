@@ -82,6 +82,17 @@ describe("developer operations API", () => {
                   "2026-09-30T12:00:00.000Z",
                 updatedAt:
                   "2026-09-30T13:00:00.000Z",
+                  classificationStatus:
+                    "classified",
+                  category: "bug",
+                  priority: "high",
+                  aiSummary:
+                    "GitHub synchronization is returning an API error.",
+                  classificationModel:
+                    "test-classifier",
+                  classificationError: null,
+                  classifiedAt:
+                    "2026-09-30T13:01:00.000Z",
               },
             ],
           };
@@ -112,6 +123,12 @@ describe("developer operations API", () => {
             "developer-ops-assistant",
           number: 4,
           title: "API synchronization failure",
+          classificationStatus:
+            "classified",
+          category: "bug",
+          priority: "high",
+          aiSummary:
+            "GitHub synchronization is returning an API error.",
         },
       ],
     });

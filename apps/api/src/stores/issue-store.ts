@@ -63,6 +63,16 @@ export function createPostgresIssueStore(
               htmlUrl: issues.htmlUrl,
               createdAt: issues.githubCreatedAt,
               updatedAt: issues.githubUpdatedAt,
+              classificationStatus:
+                issues.classificationStatus,
+              category: issues.category,
+              priority: issues.priority,
+              aiSummary: issues.aiSummary,
+              classificationModel:
+                issues.classificationModel,
+              classificationError:
+                issues.classificationError,
+              classifiedAt: issues.classifiedAt,
             })
             .from(issues)
             .innerJoin(
@@ -110,6 +120,17 @@ export function createPostgresIssueStore(
             issue.createdAt.toISOString(),
           updatedAt:
             issue.updatedAt.toISOString(),
+          classificationStatus:
+            issue.classificationStatus,
+          category: issue.category,
+          priority: issue.priority,
+          aiSummary: issue.aiSummary,
+          classificationModel:
+            issue.classificationModel,
+          classificationError:
+            issue.classificationError,
+          classifiedAt:
+            issue.classifiedAt?.toISOString() ?? null,
         }));
 
       return {

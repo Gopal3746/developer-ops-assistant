@@ -41,6 +41,24 @@ export interface GitHubSyncSummary {
 
 export type IssueState = "open" | "closed";
 
+export type IssueClassificationStatus =
+  | "pending"
+  | "classified"
+  | "failed";
+
+export type IssueCategory =
+  | "bug"
+  | "feature"
+  | "question"
+  | "documentation"
+  | "other";
+
+export type IssuePriority =
+  | "low"
+  | "medium"
+  | "high"
+  | "urgent";
+
 export interface IssueRecord {
   id: number;
   repository: string;
@@ -54,6 +72,13 @@ export interface IssueRecord {
   htmlUrl: string;
   createdAt: string;
   updatedAt: string;
+  classificationStatus: IssueClassificationStatus;
+  category: IssueCategory | null;
+  priority: IssuePriority | null;
+  aiSummary: string | null;
+  classificationModel: string | null;
+  classificationError: string | null;
+  classifiedAt: string | null;
 }
 
 export interface IssueListResponse {
