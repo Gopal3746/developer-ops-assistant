@@ -1,4 +1,8 @@
 import type {
+  IssueClassificationBatchSummary,
+} from "@developer-ops/shared";
+
+import type {
   IssueClassification,
   IssueClassifier,
 } from "./issue-classifier.js";
@@ -14,12 +18,6 @@ export interface ClassifyPendingIssuesOptions {
   limit?: number;
 }
 
-export interface ClassificationBatchSummary {
-  attemptedCount: number;
-  classifiedCount: number;
-  failedCount: number;
-}
-
 function getErrorMessage(error: unknown): string {
   const message =
     error instanceof Error
@@ -31,7 +29,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function classifyPendingIssues(
   options: ClassifyPendingIssuesOptions,
-): Promise<ClassificationBatchSummary> {
+): Promise<IssueClassificationBatchSummary> {
   const limit = options.limit ?? DEFAULT_BATCH_LIMIT;
 
   if (

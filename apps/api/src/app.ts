@@ -7,6 +7,10 @@ import {
   registerGitHubSyncRoute,
   type GitHubSynchronizer,
 } from "./routes/github-sync.js";
+import {
+  registerIssueClassificationRoute,
+  type IssueClassificationRunner,
+} from "./routes/issue-classification.js";
 import { registerIssuesRoute } from "./routes/issues.js";
 import { registerOverviewRoute } from "./routes/overview.js";
 import type { IssueStore } from "./stores/issue-store.js";
@@ -16,6 +20,7 @@ export interface BuildAppOptions {
   overviewStore?: OverviewStore;
   issueStore?: IssueStore;
   githubSynchronizer?: GitHubSynchronizer;
+  issueClassificationRunner?: IssueClassificationRunner;
 }
 
 export async function buildApp(
@@ -58,6 +63,10 @@ export async function buildApp(
 
   await registerOverviewRoute(app, overviewStore);
   await registerIssuesRoute(app, issueStore);
+  await registerIssueClassificationRoute(
+    app,
+    options.issueClassificationRunner,
+  );
   await registerGitHubSyncRoute(
     app,
     options.githubSynchronizer,

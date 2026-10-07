@@ -85,3 +85,9 @@ export interface IssueListResponse {
   total: number;
   issues: IssueRecord[];
 }
+
+export interface IssueClassificationBatchSummary {
+  attemptedCount: number;
+  classifiedCount: number;
+  failedCount: number;
+}

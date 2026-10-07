@@ -150,6 +150,85 @@ describe("developer operations API", () => {
     });
   });
 
+  it("reports when issue classification is unavailable", async () => {
+    const app = await buildApp();
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/issues/classify",
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({
+      message:
+        "Issue classification is not configured",
+    });
+  });
+
+  it("classifies pending issues with the default limit", async () => {
+    let receivedLimit: number | undefined;
+
+    const app = await buildApp({
+      issueClassificationRunner: {
+        async classify(limit) {
+          receivedLimit = limit;
+
+          return {
+            attemptedCount: 3,
+            classifiedCount: 2,
+            failedCount: 1,
+          };
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/issues/classify",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(receivedLimit).toBe(25);
+    expect(response.json()).toEqual({
+      attemptedCount: 3,
+      classifiedCount: 2,
+      failedCount: 1,
+    });
+  });
+
+  it("rejects an invalid classification limit", async () => {
+    const app = await buildApp({
+      issueClassificationRunner: {
+        async classify() {
+          return {
+            attemptedCount: 0,
+            classifiedCount: 0,
+            failedCount: 0,
+          };
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/issues/classify",
+      payload: {
+        limit: 0,
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message:
+        "limit must be an integer between 1 and 100",
+    });
+  });
+
   it("reports when GitHub synchronization is unavailable", async () => {
     const app = await buildApp();
     applications.push(app);
