@@ -5,6 +5,7 @@ import type {
 import { useEffect, useState } from "react";
 
 import {
+  classifyPendingIssues,
   fetchIssues,
   fetchOverview,
   synchronizeGitHub,
@@ -22,8 +23,11 @@ interface IssueReviewProps {
   issueResponse: IssueListResponse | null;
   issueError: string | null;
   isLoading: boolean;
+  isClassifying: boolean;
+  classificationNotice: SyncNotice | null;
   selectedRepository: string;
   onRepositoryChange(repository: string): void;
+  onClassifyPending(): void;
 }
 
 function formatRelativeTime(timestamp: string): string {
@@ -66,8 +70,11 @@ function IssueReview({
   issueResponse,
   issueError,
   isLoading,
+  isClassifying,
+  classificationNotice,
   selectedRepository,
   onRepositoryChange,
+  onClassifyPending,
 }: IssueReviewProps) {
   return (
     <section className="panel issues-panel" id="issues">
@@ -104,8 +111,35 @@ function IssueReview({
               ))}
             </select>
           </label>
+
+          <button
+            className="classify-button"
+            type="button"
+            disabled={isClassifying}
+            onClick={onClassifyPending}
+          >
+            {isClassifying
+              ? "Classifying…"
+              : "Classify pending"}
+          </button>
         </div>
       </header>
+
+      {classificationNotice ? (
+        <div
+          className={
+            "classification-notice " +
+            `classification-notice--${classificationNotice.type}`
+          }
+          role={
+            classificationNotice.type === "error"
+              ? "alert"
+              : "status"
+          }
+        >
+          {classificationNotice.message}
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="issue-state" role="status">
@@ -153,13 +187,53 @@ function IssueReview({
                   {issue.title}
                 </a>
 
-                <StatusBadge status={issue.state} />
+                <div className="issue-statuses">
+                  <StatusBadge status={issue.state} />
+                  <StatusBadge
+                    status={issue.classificationStatus}
+                  />
+                </div>
               </div>
 
               <p className="issue-description">
                 {issue.body?.trim() ||
                   "No description was provided for this issue."}
               </p>
+
+              {issue.classificationStatus ===
+                "classified" && issue.aiSummary ? (
+                <div className="ai-triage">
+                  <div className="ai-triage-header">
+                    <strong>AI triage</strong>
+
+                    <div className="ai-triage-badges">
+                      {issue.category ? (
+                        <span className="triage-badge">
+                          {issue.category}
+                        </span>
+                      ) : null}
+
+                      {issue.priority ? (
+                        <span
+                          className={`triage-badge triage-badge--${issue.priority}`}
+                        >
+                          {issue.priority} priority
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <p>{issue.aiSummary}</p>
+                </div>
+              ) : issue.classificationStatus ===
+                "failed" ? (
+                <div className="ai-triage ai-triage--failed">
+                  <strong>AI triage failed</strong>
+                  <p>
+                    Retry classification after checking the API logs.
+                  </p>
+                </div>
+              ) : null}
 
               <footer className="issue-card-footer">
                 <div
@@ -207,6 +281,13 @@ function App() {
     useState(false);
   const [selectedRepository, setSelectedRepository] =
     useState("");
+
+  const [isClassifying, setIsClassifying] =
+    useState(false);
+  const [
+    classificationNotice,
+    setClassificationNotice,
+  ] = useState<SyncNotice | null>(null);
 
   const [isSynchronizing, setIsSynchronizing] =
     useState(false);
@@ -263,6 +344,36 @@ function App() {
       });
     } finally {
       setIsSynchronizing(false);
+    }
+  }
+
+  async function handleIssueClassification(): Promise<void> {
+    setIsClassifying(true);
+    setClassificationNotice(null);
+
+    try {
+      const summary = await classifyPendingIssues();
+      const refreshedIssues = await fetchIssues(
+        selectedRepository || undefined,
+      );
+
+      setIssueResponse(refreshedIssues);
+      setIssueError(null);
+      setClassificationNotice({
+        type: "success",
+        message:
+          `Processed ${summary.attemptedCount} issues: ` +
+          `${summary.classifiedCount} classified and ` +
+          `${summary.failedCount} failed.`,
+      });
+    } catch {
+      setClassificationNotice({
+        type: "error",
+        message:
+          "AI classification failed. Confirm the OpenAI configuration and check the API logs.",
+      });
+    } finally {
+      setIsClassifying(false);
     }
   }
 
@@ -500,8 +611,13 @@ function App() {
             issueResponse={issueResponse}
             issueError={issueError}
             isLoading={isLoadingIssues}
+            isClassifying={isClassifying}
+            classificationNotice={classificationNotice}
             selectedRepository={selectedRepository}
             onRepositoryChange={setSelectedRepository}
+            onClassifyPending={() => {
+              void handleIssueClassification();
+            }}
           />
         ) : (
           <>

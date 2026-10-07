@@ -1,6 +1,7 @@
 import type {
   DashboardOverview,
   GitHubSyncSummary,
+  IssueClassificationBatchSummary,
   IssueListResponse,
 } from "@developer-ops/shared";
 
@@ -65,4 +66,23 @@ export async function synchronizeGitHub(): Promise<GitHubSyncSummary> {
   }
 
   return (await response.json()) as GitHubSyncSummary;
+}
+
+export async function classifyPendingIssues(): Promise<
+  IssueClassificationBatchSummary
+> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/issues/classify`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Issue classification failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as IssueClassificationBatchSummary;
 }
