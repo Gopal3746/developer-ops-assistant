@@ -11,6 +11,7 @@ import {
   repositories,
   workflowRuns,
 } from "../db/schema.js";
+import { needsIssueReclassification } from "../github/issue-content.js";
 import type {
   GitHubSyncStore,
   SynchronizedRepository,
@@ -127,14 +128,51 @@ export function createPostgresGitHubSyncStore(
             repositoryId = insertedRepository.id;
           }
 
-          await transaction
-            .delete(githubIssues)
+          const existingIssues = await transaction
+            .select({
+              id: githubIssues.id,
+              githubId: githubIssues.githubId,
+              title: githubIssues.title,
+              body: githubIssues.body,
+              labels: githubIssues.labels,
+            })
+            .from(githubIssues)
             .where(
               eq(
                 githubIssues.repositoryId,
                 repositoryId,
               ),
             );
+
+          const incomingIssueIds = snapshot.issues.map(
+            (issue) => issue.githubId,
+          );
+
+          if (incomingIssueIds.length === 0) {
+            await transaction
+              .delete(githubIssues)
+              .where(
+                eq(
+                  githubIssues.repositoryId,
+                  repositoryId,
+                ),
+              );
+          } else {
+            await transaction
+              .delete(githubIssues)
+              .where(
+                and(
+                  eq(
+                    githubIssues.repositoryId,
+                    repositoryId,
+                  ),
+                  notInArray(
+                    githubIssues.githubId,
+                    incomingIssueIds,
+                  ),
+                ),
+              );
+          }
 
           await transaction
             .delete(workflowRuns)
@@ -145,24 +183,70 @@ export function createPostgresGitHubSyncStore(
               ),
             );
 
-          if (snapshot.issues.length > 0) {
+          const existingIssuesByGitHubId = new Map(
+            existingIssues.map((issue) => [
+              issue.githubId,
+              issue,
+            ]),
+          );
+
+          for (const issue of snapshot.issues) {
+            const existingIssue =
+              existingIssuesByGitHubId.get(
+                issue.githubId,
+              );
+
+            const synchronizedIssue = {
+              githubId: issue.githubId,
+              repositoryId,
+              number: issue.number,
+              title: issue.title,
+              body: issue.body,
+              author: issue.author,
+              state: issue.state,
+              labels: issue.labels,
+              htmlUrl: issue.htmlUrl,
+              githubCreatedAt: issue.createdAt,
+              githubUpdatedAt: issue.updatedAt,
+              updatedAt: synchronizedAt,
+            };
+
+            if (!existingIssue) {
+              await transaction
+                .insert(githubIssues)
+                .values(synchronizedIssue);
+
+              continue;
+            }
+
+            const shouldReclassify =
+              needsIssueReclassification(
+                existingIssue,
+                issue,
+              );
+
             await transaction
-              .insert(githubIssues)
-              .values(
-                snapshot.issues.map((issue) => ({
-                  githubId: issue.githubId,
-                  repositoryId,
-                  number: issue.number,
-                  title: issue.title,
-                  body: issue.body,
-                  author: issue.author,
-                  state: issue.state,
-                  labels: issue.labels,
-                  htmlUrl: issue.htmlUrl,
-                  githubCreatedAt: issue.createdAt,
-                  githubUpdatedAt: issue.updatedAt,
-                  updatedAt: synchronizedAt,
-                })),
+              .update(githubIssues)
+              .set({
+                ...synchronizedIssue,
+                ...(shouldReclassify
+                  ? {
+                      classificationStatus:
+                        "pending" as const,
+                      category: null,
+                      priority: null,
+                      aiSummary: null,
+                      classificationModel: null,
+                      classificationError: null,
+                      classifiedAt: null,
+                    }
+                  : {}),
+              })
+              .where(
+                eq(
+                  githubIssues.id,
+                  existingIssue.id,
+                ),
               );
           }
 
