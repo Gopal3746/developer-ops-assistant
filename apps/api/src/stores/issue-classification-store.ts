@@ -16,9 +16,14 @@ export interface PendingIssue {
   labels: string[];
 }
 
+export type ClassifiableIssueStatus =
+  | "pending"
+  | "failed";
+
 export interface IssueClassificationStore {
-  listPendingIssues(
+  listClassifiableIssues(
     limit: number,
+    status: ClassifiableIssueStatus,
   ): Promise<PendingIssue[]>;
   saveClassification(
     issueId: number,
@@ -34,8 +39,9 @@ export function createPostgresIssueClassificationStore(
   db: Database,
 ): IssueClassificationStore {
   return {
-    async listPendingIssues(
+    async listClassifiableIssues(
       limit: number,
+      status: ClassifiableIssueStatus,
     ): Promise<PendingIssue[]> {
       return db
         .select({
@@ -57,7 +63,7 @@ export function createPostgresIssueClassificationStore(
         .where(
           eq(
             issues.classificationStatus,
-            "pending",
+            status,
           ),
         )
         .orderBy(

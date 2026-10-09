@@ -1,8 +1,10 @@
 import type {
+  IssueListFilters,
   IssueListResponse,
   IssueRecord,
 } from "@developer-ops/shared";
 import {
+  and,
   count,
   desc,
   eq,
@@ -15,8 +17,7 @@ import {
   repositories,
 } from "../db/schema.js";
 
-export interface IssueQuery {
-  repository?: string;
+export interface IssueQuery extends IssueListFilters {
   limit: number;
 }
 
@@ -33,18 +34,32 @@ export function createPostgresIssueStore(
     async listIssues(
       query: IssueQuery,
     ): Promise<IssueListResponse> {
-      const repositoryFilter = query.repository
-        ? or(
-            eq(
-              repositories.name,
-              query.repository,
-            ),
-            eq(
-              repositories.fullName,
-              query.repository,
-            ),
-          )
-        : undefined;
+      const issueFilter = and(
+        query.repository
+          ? or(
+              eq(
+                repositories.name,
+                query.repository,
+              ),
+              eq(
+                repositories.fullName,
+                query.repository,
+              ),
+            )
+          : undefined,
+        query.classificationStatus
+          ? eq(
+              issues.classificationStatus,
+              query.classificationStatus,
+            )
+          : undefined,
+        query.category
+          ? eq(issues.category, query.category)
+          : undefined,
+        query.priority
+          ? eq(issues.priority, query.priority)
+          : undefined,
+      );
 
       const [issueRows, totalRows] =
         await Promise.all([
@@ -82,7 +97,7 @@ export function createPostgresIssueStore(
                 repositories.id,
               ),
             )
-            .where(repositoryFilter)
+            .where(issueFilter)
             .orderBy(
               desc(issues.githubUpdatedAt),
             )
@@ -100,7 +115,7 @@ export function createPostgresIssueStore(
                 repositories.id,
               ),
             )
-            .where(repositoryFilter),
+            .where(issueFilter),
         ]);
 
       const issueRecords: IssueRecord[] =

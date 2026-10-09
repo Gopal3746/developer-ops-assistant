@@ -1,11 +1,15 @@
 import type {
   DashboardOverview,
+  IssueCategory,
+  IssueClassificationStatus,
+  IssueListFilters,
   IssueListResponse,
+  IssuePriority,
 } from "@developer-ops/shared";
 import { useEffect, useState } from "react";
 
 import {
-  classifyPendingIssues,
+  classifyIssues,
   fetchIssues,
   fetchOverview,
   synchronizeGitHub,
@@ -23,11 +27,39 @@ interface IssueReviewProps {
   issueResponse: IssueListResponse | null;
   issueError: string | null;
   isLoading: boolean;
-  isClassifying: boolean;
+  classificationMode: "pending" | "failed" | null;
   classificationNotice: SyncNotice | null;
   selectedRepository: string;
+  selectedClassificationStatus:
+    | IssueClassificationStatus
+    | "";
+  selectedCategory: IssueCategory | "";
+  selectedPriority: IssuePriority | "";
   onRepositoryChange(repository: string): void;
-  onClassifyPending(): void;
+  onClassificationStatusChange(
+    status: IssueClassificationStatus | "",
+  ): void;
+  onCategoryChange(category: IssueCategory | ""): void;
+  onPriorityChange(priority: IssuePriority | ""): void;
+  onClassify(status: "pending" | "failed"): void;
+}
+
+function createIssueFilters(
+  repository: string,
+  classificationStatus:
+    | IssueClassificationStatus
+    | "",
+  category: IssueCategory | "",
+  priority: IssuePriority | "",
+): IssueListFilters {
+  return {
+    ...(repository ? { repository } : {}),
+    ...(classificationStatus
+      ? { classificationStatus }
+      : {}),
+    ...(category ? { category } : {}),
+    ...(priority ? { priority } : {}),
+  };
 }
 
 function formatRelativeTime(timestamp: string): string {
@@ -70,11 +102,17 @@ function IssueReview({
   issueResponse,
   issueError,
   isLoading,
-  isClassifying,
+  classificationMode,
   classificationNotice,
   selectedRepository,
+  selectedClassificationStatus,
+  selectedCategory,
+  selectedPriority,
   onRepositoryChange,
-  onClassifyPending,
+  onClassificationStatusChange,
+  onCategoryChange,
+  onPriorityChange,
+  onClassify,
 }: IssueReviewProps) {
   return (
     <section className="panel issues-panel" id="issues">
@@ -91,7 +129,7 @@ function IssueReview({
               : `${issueResponse?.total ?? 0} open`}
           </span>
 
-          <label className="repository-filter">
+          <label className="issue-filter issue-filter--repository">
             <span>Repository</span>
             <select
               value={selectedRepository}
@@ -112,16 +150,95 @@ function IssueReview({
             </select>
           </label>
 
-          <button
-            className="classify-button"
-            type="button"
-            disabled={isClassifying}
-            onClick={onClassifyPending}
-          >
-            {isClassifying
-              ? "Classifying…"
-              : "Classify pending"}
-          </button>
+          <label className="issue-filter">
+            <span>AI status</span>
+            <select
+              value={selectedClassificationStatus}
+              onChange={(event) => {
+                onClassificationStatusChange(
+                  event.target.value as
+                    | IssueClassificationStatus
+                    | "",
+                );
+              }}
+            >
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="classified">Classified</option>
+              <option value="failed">Failed</option>
+            </select>
+          </label>
+
+          <label className="issue-filter">
+            <span>Category</span>
+            <select
+              value={selectedCategory}
+              onChange={(event) => {
+                onCategoryChange(
+                  event.target.value as
+                    | IssueCategory
+                    | "",
+                );
+              }}
+            >
+              <option value="">All categories</option>
+              <option value="bug">Bug</option>
+              <option value="feature">Feature</option>
+              <option value="question">Question</option>
+              <option value="documentation">
+                Documentation
+              </option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+
+          <label className="issue-filter">
+            <span>Priority</span>
+            <select
+              value={selectedPriority}
+              onChange={(event) => {
+                onPriorityChange(
+                  event.target.value as
+                    | IssuePriority
+                    | "",
+                );
+              }}
+            >
+              <option value="">All priorities</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+
+          <div className="classification-actions">
+            <button
+              className="classify-button"
+              type="button"
+              disabled={classificationMode !== null}
+              onClick={() => {
+                onClassify("pending");
+              }}
+            >
+              {classificationMode === "pending"
+                ? "Classifying…"
+                : "Classify pending"}
+            </button>
+
+            <button
+              className="classify-button classify-button--secondary"
+              type="button"
+              disabled={classificationMode !== null}
+              onClick={() => {
+                onClassify("failed");
+              }}
+            >
+              {classificationMode === "failed"
+                ? "Retrying…"
+                : "Retry failed"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -281,9 +398,17 @@ function App() {
     useState(false);
   const [selectedRepository, setSelectedRepository] =
     useState("");
+  const [
+    selectedClassificationStatus,
+    setSelectedClassificationStatus,
+  ] = useState<IssueClassificationStatus | "">("");
+  const [selectedCategory, setSelectedCategory] =
+    useState<IssueCategory | "">("");
+  const [selectedPriority, setSelectedPriority] =
+    useState<IssuePriority | "">("");
 
-  const [isClassifying, setIsClassifying] =
-    useState(false);
+  const [classificationMode, setClassificationMode] =
+    useState<"pending" | "failed" | null>(null);
   const [
     classificationNotice,
     setClassificationNotice,
@@ -322,7 +447,12 @@ function App() {
 
       if (activeView === "issues") {
         const refreshedIssues = await fetchIssues(
-          selectedRepository || undefined,
+          createIssueFilters(
+            selectedRepository,
+            selectedClassificationStatus,
+            selectedCategory,
+            selectedPriority,
+          ),
         );
 
         setIssueResponse(refreshedIssues);
@@ -347,14 +477,21 @@ function App() {
     }
   }
 
-  async function handleIssueClassification(): Promise<void> {
-    setIsClassifying(true);
+  async function handleIssueClassification(
+    status: "pending" | "failed",
+  ): Promise<void> {
+    setClassificationMode(status);
     setClassificationNotice(null);
 
     try {
-      const summary = await classifyPendingIssues();
+      const summary = await classifyIssues(status);
       const refreshedIssues = await fetchIssues(
-        selectedRepository || undefined,
+        createIssueFilters(
+          selectedRepository,
+          selectedClassificationStatus,
+          selectedCategory,
+          selectedPriority,
+        ),
       );
 
       setIssueResponse(refreshedIssues);
@@ -362,7 +499,8 @@ function App() {
       setClassificationNotice({
         type: "success",
         message:
-          `Processed ${summary.attemptedCount} issues: ` +
+          `${status === "failed" ? "Retried" : "Processed"} ` +
+          `${summary.attemptedCount} issues: ` +
           `${summary.classifiedCount} classified and ` +
           `${summary.failedCount} failed.`,
       });
@@ -373,7 +511,7 @@ function App() {
           "AI classification failed. Confirm the OpenAI configuration and check the API logs.",
       });
     } finally {
-      setIsClassifying(false);
+      setClassificationMode(null);
     }
   }
 
@@ -417,7 +555,12 @@ function App() {
 
       try {
         const result = await fetchIssues(
-          selectedRepository || undefined,
+          createIssueFilters(
+            selectedRepository,
+            selectedClassificationStatus,
+            selectedCategory,
+            selectedPriority,
+          ),
           controller.signal,
         );
 
@@ -441,7 +584,13 @@ function App() {
     return () => {
       controller.abort();
     };
-  }, [activeView, selectedRepository]);
+  }, [
+    activeView,
+    selectedRepository,
+    selectedClassificationStatus,
+    selectedCategory,
+    selectedPriority,
+  ]);
 
   const connectionLabel = errorMessage
     ? "API unavailable"
@@ -611,12 +760,22 @@ function App() {
             issueResponse={issueResponse}
             issueError={issueError}
             isLoading={isLoadingIssues}
-            isClassifying={isClassifying}
+            classificationMode={classificationMode}
             classificationNotice={classificationNotice}
             selectedRepository={selectedRepository}
+            selectedClassificationStatus={
+              selectedClassificationStatus
+            }
+            selectedCategory={selectedCategory}
+            selectedPriority={selectedPriority}
             onRepositoryChange={setSelectedRepository}
-            onClassifyPending={() => {
-              void handleIssueClassification();
+            onClassificationStatusChange={
+              setSelectedClassificationStatus
+            }
+            onCategoryChange={setSelectedCategory}
+            onPriorityChange={setSelectedPriority}
+            onClassify={(status) => {
+              void handleIssueClassification(status);
             }}
           />
         ) : (

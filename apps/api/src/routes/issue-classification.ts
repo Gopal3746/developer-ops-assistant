@@ -6,11 +6,17 @@ const MAX_CLASSIFICATION_LIMIT = 100;
 
 interface IssueClassificationRequestBody {
   limit?: unknown;
+  status?: unknown;
 }
+
+export type RequestedClassificationStatus =
+  | "pending"
+  | "failed";
 
 export interface IssueClassificationRunner {
   classify(
     limit: number,
+    status: RequestedClassificationStatus,
   ): Promise<IssueClassificationBatchSummary>;
 }
 
@@ -31,6 +37,7 @@ export async function registerIssueClassificationRoute(
     const limit =
       request.body?.limit ??
       DEFAULT_CLASSIFICATION_LIMIT;
+    const status = request.body?.status ?? "pending";
 
     if (
       typeof limit !== "number" ||
@@ -44,6 +51,13 @@ export async function registerIssueClassificationRoute(
       });
     }
 
-    return runner.classify(limit);
+    if (status !== "pending" && status !== "failed") {
+      return reply.code(400).send({
+        message:
+          "status must be pending or failed",
+      });
+    }
+
+    return runner.classify(limit, status);
   });
 }

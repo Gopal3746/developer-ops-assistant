@@ -2,6 +2,7 @@ import type {
   DashboardOverview,
   GitHubSyncSummary,
   IssueClassificationBatchSummary,
+  IssueListFilters,
   IssueListResponse,
 } from "@developer-ops/shared";
 
@@ -26,15 +27,30 @@ export async function fetchOverview(
 }
 
 export async function fetchIssues(
-  repository?: string,
+  filters: IssueListFilters = {},
   signal?: AbortSignal,
 ): Promise<IssueListResponse> {
   const parameters = new URLSearchParams({
     limit: "50",
   });
 
-  if (repository) {
-    parameters.set("repository", repository);
+  if (filters.repository) {
+    parameters.set("repository", filters.repository);
+  }
+
+  if (filters.classificationStatus) {
+    parameters.set(
+      "classificationStatus",
+      filters.classificationStatus,
+    );
+  }
+
+  if (filters.category) {
+    parameters.set("category", filters.category);
+  }
+
+  if (filters.priority) {
+    parameters.set("priority", filters.priority);
   }
 
   const response = await fetch(
@@ -68,13 +84,19 @@ export async function synchronizeGitHub(): Promise<GitHubSyncSummary> {
   return (await response.json()) as GitHubSyncSummary;
 }
 
-export async function classifyPendingIssues(): Promise<
+export async function classifyIssues(
+  status: "pending" | "failed" = "pending",
+): Promise<
   IssueClassificationBatchSummary
 > {
   const response = await fetch(
     `${apiBaseUrl}/api/issues/classify`,
     {
       method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ status }),
     },
   );
 

@@ -373,7 +373,7 @@ td small {
   }
 
   .sidebar nav {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .connection-status {
@@ -525,13 +525,21 @@ button.nav-link.nav-link--active {
 }
 
 .issue-panel-header {
+  align-items: flex-start;
   gap: 24px;
 }
 
 .issue-toolbar {
   display: flex;
   align-items: flex-end;
-  gap: 18px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.classification-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .classify-button {
@@ -561,6 +569,12 @@ button.nav-link.nav-link--active {
   opacity: 0.55;
 }
 
+.classify-button--secondary {
+  border-color: rgb(141 161 182 / 30%);
+  color: #aab9c8;
+  background: rgb(141 161 182 / 8%);
+}
+
 .classification-notice {
   padding: 11px 20px;
   border-bottom: 1px solid;
@@ -586,12 +600,12 @@ button.nav-link.nav-link--active {
   white-space: nowrap;
 }
 
-.repository-filter {
+.issue-filter {
   display: grid;
   gap: 6px;
 }
 
-.repository-filter > span {
+.issue-filter > span {
   color: #71869b;
   font-size: 10px;
   font-weight: 700;
@@ -599,8 +613,8 @@ button.nav-link.nav-link--active {
   text-transform: uppercase;
 }
 
-.repository-filter select {
-  min-width: 230px;
+.issue-filter select {
+  min-width: 140px;
   border: 1px solid #29445d;
   border-radius: 7px;
   padding: 8px 32px 8px 10px;
@@ -610,9 +624,24 @@ button.nav-link.nav-link--active {
   font-size: 12px;
 }
 
-.repository-filter select:focus-visible {
+.issue-filter--repository select {
+  min-width: 220px;
+}
+
+.issue-filter select:focus-visible {
   outline: 2px solid #54d7ff;
   outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .issue-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .issue-toolbar {
+    justify-content: flex-start;
+  }
 }
 
 .issue-state {

@@ -86,6 +86,13 @@ export interface IssueListResponse {
   issues: IssueRecord[];
 }
 
+export interface IssueListFilters {
+  repository?: string;
+  classificationStatus?: IssueClassificationStatus;
+  category?: IssueCategory;
+  priority?: IssuePriority;
+}
+
 export interface IssueClassificationBatchSummary {
   attemptedCount: number;
   classifiedCount: number;

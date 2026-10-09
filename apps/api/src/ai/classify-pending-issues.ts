@@ -6,7 +6,10 @@ import type {
   IssueClassification,
   IssueClassifier,
 } from "./issue-classifier.js";
-import type { IssueClassificationStore } from "../stores/issue-classification-store.js";
+import type {
+  ClassifiableIssueStatus,
+  IssueClassificationStore,
+} from "../stores/issue-classification-store.js";
 
 const DEFAULT_BATCH_LIMIT = 25;
 const MAX_BATCH_LIMIT = 100;
@@ -16,6 +19,7 @@ export interface ClassifyPendingIssuesOptions {
   classifier: IssueClassifier;
   store: IssueClassificationStore;
   limit?: number;
+  status?: ClassifiableIssueStatus;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -42,8 +46,12 @@ export async function classifyPendingIssues(
     );
   }
 
+  const status = options.status ?? "pending";
   const pendingIssues =
-    await options.store.listPendingIssues(limit);
+    await options.store.listClassifiableIssues(
+      limit,
+      status,
+    );
 
   let classifiedCount = 0;
   let failedCount = 0;

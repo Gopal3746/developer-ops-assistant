@@ -107,12 +107,18 @@ describe("developer operations API", () => {
       url:
         "/api/issues" +
         "?repository=developer-ops-assistant" +
+        "&classificationStatus=classified" +
+        "&category=bug" +
+        "&priority=high" +
         "&limit=5",
     });
 
     expect(response.statusCode).toBe(200);
     expect(receivedQuery).toEqual({
       repository: "developer-ops-assistant",
+      classificationStatus: "classified",
+      category: "bug",
+      priority: "high",
       limit: 5,
     });
     expect(response.json()).toMatchObject({
@@ -133,6 +139,41 @@ describe("developer operations API", () => {
       ],
     });
   });
+
+  it.each([
+    {
+      parameter: "classificationStatus",
+      value: "unknown",
+      message:
+        "classificationStatus must be pending, classified, or failed",
+    },
+    {
+      parameter: "category",
+      value: "incident",
+      message:
+        "category must be bug, feature, question, documentation, or other",
+    },
+    {
+      parameter: "priority",
+      value: "critical",
+      message:
+        "priority must be low, medium, high, or urgent",
+    },
+  ])(
+    "rejects an invalid $parameter issue filter",
+    async ({ parameter, value, message }) => {
+      const app = await buildApp();
+      applications.push(app);
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/issues?${parameter}=${value}`,
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ message });
+    },
+  );
 
   it("rejects an invalid issue limit", async () => {
     const app = await buildApp();
@@ -168,11 +209,13 @@ describe("developer operations API", () => {
 
   it("classifies pending issues with the default limit", async () => {
     let receivedLimit: number | undefined;
+    let receivedStatus: string | undefined;
 
     const app = await buildApp({
       issueClassificationRunner: {
-        async classify(limit) {
+        async classify(limit, status) {
           receivedLimit = limit;
+          receivedStatus = status;
 
           return {
             attemptedCount: 3,
@@ -192,10 +235,47 @@ describe("developer operations API", () => {
 
     expect(response.statusCode).toBe(200);
     expect(receivedLimit).toBe(25);
+    expect(receivedStatus).toBe("pending");
     expect(response.json()).toEqual({
       attemptedCount: 3,
       classifiedCount: 2,
       failedCount: 1,
+    });
+  });
+
+  it("retries failed issue classifications", async () => {
+    let receivedStatus: string | undefined;
+
+    const app = await buildApp({
+      issueClassificationRunner: {
+        async classify(_limit, status) {
+          receivedStatus = status;
+
+          return {
+            attemptedCount: 2,
+            classifiedCount: 2,
+            failedCount: 0,
+          };
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/issues/classify",
+      payload: {
+        status: "failed",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(receivedStatus).toBe("failed");
+    expect(response.json()).toEqual({
+      attemptedCount: 2,
+      classifiedCount: 2,
+      failedCount: 0,
     });
   });
 
@@ -226,6 +306,35 @@ describe("developer operations API", () => {
     expect(response.json()).toEqual({
       message:
         "limit must be an integer between 1 and 100",
+    });
+  });
+
+  it("rejects an invalid classification status", async () => {
+    const app = await buildApp({
+      issueClassificationRunner: {
+        async classify() {
+          return {
+            attemptedCount: 0,
+            classifiedCount: 0,
+            failedCount: 0,
+          };
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/issues/classify",
+      payload: {
+        status: "classified",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: "status must be pending or failed",
     });
   });
 

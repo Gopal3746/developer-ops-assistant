@@ -79,7 +79,10 @@ const githubSynchronizer =
 const issueClassificationRunner =
   openaiApiKey && openaiModel
     ? {
-        async classify(limit: number) {
+        async classify(
+          limit: number,
+          status: "pending" | "failed",
+        ) {
           return classifyPendingIssues({
             classifier: createIssueClassifier(
               createOpenAIClassificationClient({
@@ -92,6 +95,7 @@ const issueClassificationRunner =
                 db,
               ),
             limit,
+            status,
           });
         },
       }

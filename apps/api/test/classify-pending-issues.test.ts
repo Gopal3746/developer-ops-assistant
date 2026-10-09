@@ -28,7 +28,7 @@ const pendingIssues = [
 ];
 
 function createStore() {
-  const listPendingIssues = vi
+  const listClassifiableIssues = vi
     .fn()
     .mockResolvedValue(pendingIssues);
   const saveClassification = vi
@@ -39,14 +39,14 @@ function createStore() {
     .mockResolvedValue(undefined);
 
   const store: IssueClassificationStore = {
-    listPendingIssues,
+    listClassifiableIssues,
     saveClassification,
     saveFailure,
   };
 
   return {
     store,
-    listPendingIssues,
+    listClassifiableIssues,
     saveClassification,
     saveFailure,
   };
@@ -56,7 +56,7 @@ describe("classify pending issues", () => {
   it("classifies and persists pending issues", async () => {
     const {
       store,
-      listPendingIssues,
+      listClassifiableIssues,
       saveClassification,
       saveFailure,
     } = createStore();
@@ -88,7 +88,10 @@ describe("classify pending issues", () => {
       classifiedCount: 2,
       failedCount: 0,
     });
-    expect(listPendingIssues).toHaveBeenCalledWith(10);
+    expect(listClassifiableIssues).toHaveBeenCalledWith(
+      10,
+      "pending",
+    );
     expect(classify).toHaveBeenCalledTimes(2);
     expect(saveClassification).toHaveBeenCalledTimes(2);
     expect(saveClassification).toHaveBeenNthCalledWith(
@@ -102,6 +105,34 @@ describe("classify pending issues", () => {
       },
     );
     expect(saveFailure).not.toHaveBeenCalled();
+  });
+
+  it("selects failed issues for a retry batch", async () => {
+    const {
+      store,
+      listClassifiableIssues,
+    } = createStore();
+
+    await classifyPendingIssues({
+      classifier: {
+        async classify() {
+          return {
+            category: "bug",
+            priority: "medium",
+            summary: "The issue needs another review.",
+            model: "test-model",
+          };
+        },
+      },
+      store,
+      limit: 5,
+      status: "failed",
+    });
+
+    expect(listClassifiableIssues).toHaveBeenCalledWith(
+      5,
+      "failed",
+    );
   });
 
   it("records a model failure and continues the batch", async () => {
@@ -147,7 +178,8 @@ describe("classify pending issues", () => {
   });
 
   it("rejects an invalid batch limit", async () => {
-    const { store, listPendingIssues } = createStore();
+    const { store, listClassifiableIssues } =
+      createStore();
 
     await expect(
       classifyPendingIssues({
@@ -161,7 +193,7 @@ describe("classify pending issues", () => {
       "Classification limit must be an integer between 1 and 100",
     );
 
-    expect(listPendingIssues).not.toHaveBeenCalled();
+    expect(listClassifiableIssues).not.toHaveBeenCalled();
   });
 
   it("does not hide a persistence failure", async () => {
