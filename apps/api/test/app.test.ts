@@ -10,6 +10,21 @@ import { buildApp } from "../src/app.js";
 
 const applications: FastifyInstance[] = [];
 
+function createDeferred() {
+  let resolve: (() => void) | undefined;
+
+  const promise = new Promise<void>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+
+  return {
+    promise,
+    resolve() {
+      resolve?.();
+    },
+  };
+}
+
 afterEach(async () => {
   await Promise.all(
     applications
@@ -380,5 +395,90 @@ describe("developer operations API", () => {
       openIssueCount: 2,
       workflowRunCount: 14,
     });
+  });
+
+  it("rejects overlapping write operations", async () => {
+    const synchronizationStarted = createDeferred();
+    const releaseSynchronization = createDeferred();
+
+    const app = await buildApp({
+      githubSynchronizer: {
+        async synchronize() {
+          synchronizationStarted.resolve();
+          await releaseSynchronization.promise;
+
+          return {
+            repositoryCount: 1,
+            openIssueCount: 1,
+            workflowRunCount: 1,
+          };
+        },
+      },
+      issueClassificationRunner: {
+        async classify() {
+          return {
+            attemptedCount: 1,
+            classifiedCount: 1,
+            failedCount: 0,
+          };
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const synchronizationResponse = app.inject({
+      method: "POST",
+      url: "/api/github/sync",
+    });
+
+    await synchronizationStarted.promise;
+
+    const classificationResponse = await app.inject({
+      method: "POST",
+      url: "/api/issues/classify",
+    });
+
+    expect(classificationResponse.statusCode).toBe(409);
+    expect(classificationResponse.json()).toEqual({
+      message:
+        "Another write operation is already running",
+      activeOperation: "github-sync",
+      requestedOperation: "issue-classification",
+    });
+
+    releaseSynchronization.resolve();
+    expect(
+      (await synchronizationResponse).statusCode,
+    ).toBe(200);
+  });
+
+  it("does not expose unexpected internal errors", async () => {
+    const app = await buildApp({
+      githubSynchronizer: {
+        async synchronize() {
+          throw new Error(
+            "GitHub failed with token secret-value",
+          );
+        },
+      },
+    });
+
+    applications.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/github/sync",
+    });
+    const body = response.json();
+
+    expect(response.statusCode).toBe(500);
+    expect(body).toEqual({
+      message: "Internal server error",
+      requestId: expect.any(String),
+    });
+    expect(JSON.stringify(body)).not.toContain(
+      "secret-value",
+    );
   });
 });

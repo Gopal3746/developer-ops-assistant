@@ -4,6 +4,10 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { createSampleOverview } from "./data.js";
 import {
+  createOperationCoordinator,
+  OperationConflictError,
+} from "./operations/operation-coordinator.js";
+import {
   registerGitHubSyncRoute,
   type GitHubSynchronizer,
 } from "./routes/github-sync.js";
@@ -21,14 +25,39 @@ export interface BuildAppOptions {
   issueStore?: IssueStore;
   githubSynchronizer?: GitHubSynchronizer;
   issueClassificationRunner?: IssueClassificationRunner;
+  logger?: boolean;
+}
+
+function getClientErrorStatus(
+  error: unknown,
+): number | null {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("statusCode" in error)
+  ) {
+    return null;
+  }
+
+  const statusCode = error.statusCode;
+
+  return (
+    typeof statusCode === "number" &&
+    statusCode >= 400 &&
+    statusCode < 500
+  )
+    ? statusCode
+    : null;
 }
 
 export async function buildApp(
   options: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: false,
+    logger: options.logger ?? false,
   });
+  const operationCoordinator =
+    createOperationCoordinator();
 
   const overviewStore: OverviewStore =
     options.overviewStore ?? {
@@ -53,6 +82,37 @@ export async function buildApp(
       "http://localhost:5173",
   });
 
+  app.setErrorHandler((error, request, reply) => {
+    if (error instanceof OperationConflictError) {
+      return reply.code(409).send({
+        message:
+          "Another write operation is already running",
+        activeOperation: error.activeOperation,
+        requestedOperation: error.requestedOperation,
+      });
+    }
+
+    request.log.error(
+      {
+        err: error,
+        requestId: request.id,
+      },
+      "Unhandled API request error",
+    );
+
+    const statusCode = getClientErrorStatus(error) ?? 500;
+
+    return reply.code(statusCode).send({
+      message:
+        statusCode === 500
+          ? "Internal server error"
+          : error instanceof Error
+            ? error.message
+            : "Invalid request",
+      requestId: request.id,
+    });
+  });
+
   app.get("/health", async (): Promise<HealthResponse> => {
     return {
       status: "ok",
@@ -65,10 +125,12 @@ export async function buildApp(
   await registerIssuesRoute(app, issueStore);
   await registerIssueClassificationRoute(
     app,
+    operationCoordinator,
     options.issueClassificationRunner,
   );
   await registerGitHubSyncRoute(
     app,
+    operationCoordinator,
     options.githubSynchronizer,
   );
 

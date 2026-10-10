@@ -1,6 +1,8 @@
 import type { IssueClassificationBatchSummary } from "@developer-ops/shared";
 import type { FastifyInstance } from "fastify";
 
+import type { OperationCoordinator } from "../operations/operation-coordinator.js";
+
 const DEFAULT_CLASSIFICATION_LIMIT = 25;
 const MAX_CLASSIFICATION_LIMIT = 100;
 
@@ -22,6 +24,7 @@ export interface IssueClassificationRunner {
 
 export async function registerIssueClassificationRoute(
   app: FastifyInstance,
+  operationCoordinator: OperationCoordinator,
   runner?: IssueClassificationRunner,
 ): Promise<void> {
   app.post<{
@@ -58,6 +61,9 @@ export async function registerIssueClassificationRoute(
       });
     }
 
-    return runner.classify(limit, status);
+    return operationCoordinator.runExclusive(
+      "issue-classification",
+      () => runner.classify(limit, status),
+    );
   });
 }

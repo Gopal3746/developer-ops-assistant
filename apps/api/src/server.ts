@@ -102,6 +102,7 @@ const issueClassificationRunner =
     : undefined;
 
 const app = await buildApp({
+  logger: true,
   overviewStore: createPostgresOverviewStore(db),
   issueStore: createPostgresIssueStore(db),
   ...(githubSynchronizer

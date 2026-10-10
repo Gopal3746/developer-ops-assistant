@@ -27,6 +27,7 @@ interface IssueReviewProps {
   issueResponse: IssueListResponse | null;
   issueError: string | null;
   isLoading: boolean;
+  isSynchronizing: boolean;
   classificationMode: "pending" | "failed" | null;
   classificationNotice: SyncNotice | null;
   selectedRepository: string;
@@ -102,6 +103,7 @@ function IssueReview({
   issueResponse,
   issueError,
   isLoading,
+  isSynchronizing,
   classificationMode,
   classificationNotice,
   selectedRepository,
@@ -216,7 +218,10 @@ function IssueReview({
             <button
               className="classify-button"
               type="button"
-              disabled={classificationMode !== null}
+              disabled={
+                classificationMode !== null ||
+                isSynchronizing
+              }
               onClick={() => {
                 onClassify("pending");
               }}
@@ -229,7 +234,10 @@ function IssueReview({
             <button
               className="classify-button classify-button--secondary"
               type="button"
-              disabled={classificationMode !== null}
+              disabled={
+                classificationMode !== null ||
+                isSynchronizing
+              }
               onClick={() => {
                 onClassify("failed");
               }}
@@ -710,7 +718,11 @@ function App() {
             <button
               className="sync-button"
               type="button"
-              disabled={isSynchronizing || !overview}
+              disabled={
+                isSynchronizing ||
+                classificationMode !== null ||
+                !overview
+              }
               onClick={() => {
                 void handleSynchronization();
               }}
@@ -760,6 +772,7 @@ function App() {
             issueResponse={issueResponse}
             issueError={issueError}
             isLoading={isLoadingIssues}
+            isSynchronizing={isSynchronizing}
             classificationMode={classificationMode}
             classificationNotice={classificationNotice}
             selectedRepository={selectedRepository}
